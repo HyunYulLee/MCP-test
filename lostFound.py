@@ -15,46 +15,10 @@ def get_list_total_count():
     data = requests.get(url, timeout=5).json()
     return data[SERVICE]["list_total_count"]
 
-@mcp.tool(
-    name="normalize_item",
-    description="자연어 분실물 설명을 고정 카테고리로 분류"
-)
-def normalize_item(user_input: str) -> str:
-    """
-    당신은 분실물 분류기이다.
-    사용자의 자연어 입력을 해석하여 반드시 아래 카테고리 중 하나만 출력해야 한다.
-
-    [출력 가능 카테고리]
-    - 지갑
-    - 쇼핑백
-    - 서류봉투
-    - 가방
-    - 배낭
-    - 핸드폰
-    - 옷
-    - 책
-    - 파일
-    - 장난감
-    - 기타
-
-    [판단 기준]
-    - 단어가 아닌 의미 기준으로 판단한다.
-    - 브랜드명, 제품명, 구어체를 모두 고려한다.
-    - 가장 일반적인 분실물 분류를 선택한다.
-    - 애매하면 반드시 '기타'를 선택한다.
-
-    [예시]
-    - 아이폰, 갤럭시, 휴대폰 → 핸드폰
-    - 백팩, 책가방 → 배낭
-    - 크로스백 → 가방
-    - 카드지갑 → 지갑
-
-    [출력 규칙]
-    - **카테고리 단어 하나만 출력**
-    - 설명, 문장, 따옴표 금지
-    """
-    return user_input
-
+@mcp.prompt
+def ask_about_item(item: str) -> str:
+    """Generates a user message asking for an item category"""
+    return f"해당 {item}이 어느 카테고리에 포함되는지 선택해주세요: 지갑, 쇼핑백, 서류봉투, 가방, 배낭, 핸드폰, 옷, 책, 파일, 장난감, 기타"
 
 @mcp.tool(
     name="latest_detail",
