@@ -1,70 +1,73 @@
-from dotenv import load_dotenv
 from fastmcp import FastMCP
 import requests
-import os
 
-mcp = FastMCP("lostfound-mcp")
+mcp = FastMCP("lost-article-mcp")
 
-# load API
-load_dotenv() 
-API_KEY = os.getenv("SEOUL_API_KEY") 
+API_KEY = "6551505547616e6438396e75595a42"
 SERVICE = "lostArticleInfo"
 
-@mcp.tool
-def search_lost_item(
-    item: str,
-    start_date: str,
-    end_date: str
-    ) -> list:
+
+def get_list_total_count():
+    url = f"http://openapi.seoul.go.kr:8088/{API_KEY}/json/{SERVICE}/1/1"
+    data = requests.get(url, timeout=5).json()
+    return data[SERVICE]["list_total_count"]
+
+
+@mcp.tool(
+    name="latest_detail",
+    description="서울시 분실물 최신 정보 조회"
+)
+def latest_detail(item: str, start_date: str):
     """
-    기간 내 특정 분실물 검색
-
-    - item: 찾는 물건 (ex: 지갑, 에어팟)
-    - start_date: YYYYMMDD
-    - end_date: YYYYMMDD
+    item: LOST_KND (예: 지갑, 가방, 휴대폰 등)
+    start_date: YYYYMMDD 형식
     """
-    results = []
-    start = 1
-    step = 100  # 페이지 단위
 
-    while True:
-        end = start + step - 1
-        url = f"http://openapi.seoul.go.kr:8088/{API_KEY}/json/{SERVICE}/{start}/{end}"
+    if not item or not start_date:
+        return {
+            "error": "item and start_date are required"
+        }
 
-        try:
-            response = requests.get(url, timeout=5)
-            data = response.json()
-        except Exception:
-            break
+    total = get_list_total_count()
+    end = total
+    start = max(1, end - 999)
 
-        # 서비스 키가 없으면 중단
-        if SERVICE not in data:
-            break
+    url = f"http://openapi.seoul.go.kr:8088/{API_KEY}/json/{SERVICE}/{start}/{end}"
+    data = requests.get(url, timeout=5).json()
+    rows = data[SERVICE].get("row", [])
 
-        rows = data[SERVICE].get("row", [])
-        if not rows:
-            break
+    # 최신순 정렬
+    rows.sort(key=lambda x: x.get("REG_YMD", ""), reverse=True)
 
-        for row in rows:
-            get_date = row.get("GET_YMD", "")
-            lost_article = row.get("LOST_NM", "")
+    result = []
+    for row in rows:
+        reg_ymd = row.get("REG_YMD", "")
+        lost_stts = row.get("LOST_STTS", "")
+        lost_knd = row.get("LOST_KND", "")
+        lost_nm = row.get("LOST_NM", "")
+        detail = row.get("LGS_DTL_CN", "")
 
-            if (
-                start_date <= get_date <= end_date
-                and item in lost_article
-            ):
-                results.append(row)
+        # 1. LOST_NM에 '수령' 포함 시 제외
+        if "수령" in lost_nm:
+            continue
 
-        start += step
+        # 2. 조건 필터
+        if (
+            reg_ymd >= start_date
+            and lost_stts != "수령"
+            and lost_knd == item
+        ):
+            result.append({
+                "LOST_NM": lost_nm,
+                "LOST_STTS": lost_stts,
+                "LGS_DTL_CN": detail
+            })
 
-    return results
-     
+    return {
+        "count": len(result),
+        "items": result
+    }
 
-@mcp.tool
-def api_health_check() -> str:
-    url = f"http://openapi.seoul.go.kr:8088/{API_KEY}/json/lostArticleInfo/1/1"
-    res = requests.get(url)
-    return res.json()["lostArticleInfo"]["RESULT"]["CODE"]
 
 if __name__ == "__main__":
-    mcp.run(transport="http")
+    mcp.run()
