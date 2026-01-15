@@ -32,7 +32,7 @@ def get_list_total_count():
 
 @mcp.tool(
     name="latest_detail",
-    description="서울시 분실물 최신 정보 조회 (고정 카테고리만 허용)"
+    description="서울시 분실물 정보 조회"
 )
 def latest_detail(user_item: str, start_date: str):
     """
@@ -62,13 +62,29 @@ def latest_detail(user_item: str, start_date: str):
     total = get_list_total_count()
     end = total
     start = max(1, end - 999)
+    rows = []
 
-    url = f"http://openapi.seoul.go.kr:8088/{API_KEY}/json/{SERVICE}/{start}/{end}"
-    data = requests.get(url, timeout=5).json()
-    rows = data[SERVICE].get("row", [])
+    while True:
+        start = max(1, end - 999)
 
-    rows.sort(key=lambda x: x.get("REG_YMD", ""), reverse=True)
+        url = f"http://openapi.seoul.go.kr:8088/{API_KEY}/json/{SERVICE}/{start}/{end}"
+        data = requests.get(url, timeout=5).json()
+        batch = data[SERVICE].get("row", [])
 
+        if not batch:
+            break
+
+        rows.extend(batch)
+        rows.sort(key=lambda x: x.get("REG_YMD", ""), reverse=True)
+
+        if rows[-1].get("REG_YMD", "") <= start_date:
+            break
+
+        end = start - 1
+
+        if end <= 0:
+            break
+        
     result = []
     for row in rows:
         if (
