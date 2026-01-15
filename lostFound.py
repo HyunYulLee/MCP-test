@@ -19,7 +19,7 @@ def get_list_total_count():
 )
 def latest_detail(item: str, start_date: str):
     """
-    item: LOST_KND (예: 지갑, 가방, 휴대폰 등)
+    item: 찾는 물건 (지갑, 쇼핑백, 서류봉투, 가방, 배낭, 핸드폰, 옷, 책, 파일, 장난감, 기타)
     start_date: YYYYMMDD 형식
     """
 
@@ -48,13 +48,13 @@ def latest_detail(item: str, start_date: str):
         detail = row.get("LGS_DTL_CN", "")
 
         # 1. LOST_NM에 '수령' 포함 시 제외
-        if "수령" in lost_nm:
+        if any(word in lost_nm for word in ("수령", "연락됨")):
             continue
 
         # 2. 조건 필터
         if (
             reg_ymd >= start_date
-            and lost_stts != "수령"
+            and lost_stts not in ("수령", "연락됨")
             and lost_knd == item
         ):
             result.append({
