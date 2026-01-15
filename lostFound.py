@@ -1,11 +1,14 @@
+import os
 from fastmcp import FastMCP
 import requests
 
 mcp = FastMCP("lost-article-mcp")
 
-API_KEY = "6551505547616e6438396e75595a42"
+API_KEY = os.getenv("SEOUL_API_KEY")
 SERVICE = "lostArticleInfo"
 
+if not API_KEY:
+    raise RuntimeError("SEOUL_API_KEY 환경변수가 설정되지 않았습니다.")
 
 def get_list_total_count():
     url = f"http://openapi.seoul.go.kr:8088/{API_KEY}/json/{SERVICE}/1/1"
@@ -19,7 +22,7 @@ def get_list_total_count():
 )
 def latest_detail(item: str, start_date: str):
     """
-    item: 찾는 물건 (지갑, 쇼핑백, 서류봉투, 가방, 배낭, 핸드폰, 옷, 책, 파일, 장난감, 기타)
+    item: ['지갑', '쇼핑백', '서류봉투', '가방', '배낭', '핸드폰', '옷', '책', '파일', '장난감'] 중 한 카테고리 (이에 해당하지 않으면 '기타')
     start_date: YYYYMMDD 형식
     """
 
